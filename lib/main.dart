@@ -44,18 +44,28 @@ class Element {
   }
 }
 
+class ButtonsNotifier extends StateNotifier<List<Element>> {
+  ButtonsNotifier() : super(randomElements(5));
+
+  makeRandom(Element req) {
+    final a = randomElements(5);
+    if (!a.contains(req)) {
+      a[r.nextInt(5)] = req;
+    }
+    state = a;
+  }
+}
+
+final buttonsManager = StateNotifierProvider<ButtonsNotifier, List<Element>>(
+    (ref) => ButtonsNotifier());
+
 class Game {
   bool isPlaying = false;
 
   int selectedFamily = 0;
   int selectedMember = 0;
-  List<Element> buttonsElement = [
-    Element(1, 1),
-    Element(1, 1),
-    Element(1, 2),
-    Element(3, 1),
-    Element(1, 1)
-  ];
+
+  bool right = false;
 
   Game({int a = 0}) {
     this.selectedFamily = a;
@@ -65,25 +75,6 @@ class Game {
     isPlaying = true;
 
     selectedFamily = r.nextInt(8);
-
-    buttonsElement = randomElements(5);
-    if (!buttonsElement.contains(Element(selectedFamily, selectedMember + 1))) {
-      buttonsElement[r.nextInt(4)] =
-          Element(selectedFamily, selectedMember + 1);
-    }
-  }
-
-  select(int num) {
-    if (buttonsElement[num].char !=
-        Element(selectedFamily, selectedMember + 1).char) {
-      return;
-    }
-    selectedMember += 1;
-    buttonsElement = randomElements(5);
-    if (!buttonsElement.contains(Element(selectedFamily, selectedMember + 1))) {
-      buttonsElement[r.nextInt(5)] =
-          Element(selectedFamily, selectedMember + 1);
-    }
   }
 }
 
@@ -96,9 +87,34 @@ class GameNotifier extends StateNotifier<Game> {
     state = a;
   }
 
-  select(num) {
+  selectMem(int val) {
     final a = state;
-    a.select(num);
+    a.selectedMember = val;
+    state = a;
+  }
+
+  selectFam(int val) {
+    final a = state;
+    a.selectedFamily = val;
+    if (val > 7) {
+      a.selectedFamily = 0;
+    }
+    state = a;
+  }
+
+  selectFM(int f, int m) {
+    final a = state;
+    a.selectedFamily = f;
+    if (f > 7) {
+      a.selectedFamily = 0;
+    }
+    a.selectedMember = m;
+    state = a;
+  }
+
+  isR(bool r) {
+    final a = state;
+    a.right = r;
     state = a;
   }
 }
@@ -124,9 +140,34 @@ class MyApp extends ConsumerWidget {
 class MainPage extends ConsumerWidget {
   const MainPage({super.key});
 
+  select(WidgetRef ref, Element ans) {
+    final g = ref.read(gameManager);
+    if (ans.char == familyElements[g.selectedFamily][g.selectedMember + 1]) {
+      if (g.selectedMember < familyElements[g.selectedFamily].length - 2) {
+        ref
+            .read(buttonsManager.notifier)
+            .makeRandom(Element(g.selectedFamily, g.selectedMember + 2));
+        print(Element(g.selectedFamily, g.selectedMember + 2).char);
+        ref
+            .read(gameManager.notifier)
+            .selectMem(ref.read(gameManager).selectedMember + 1);
+      } else {
+        print("hello");
+        ref.read(gameManager.notifier).selectFM(g.selectedFamily + 1, 0);
+        ref.read(gameManager.notifier).isR(true);
+        ref
+            .read(buttonsManager.notifier)
+            .makeRandom(Element(g.selectedFamily, 1));
+      }
+    } else {
+      ref.read(gameManager.notifier).isR(false);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = ref.watch(gameManager);
+    final b = ref.watch(buttonsManager);
 
     return Scaffold(
       body: Column(children: [
@@ -136,14 +177,20 @@ class MainPage extends ConsumerWidget {
               5,
               (index) => ElevatedButton(
                   onPressed: () {
-                    ref.read(gameManager.notifier).select(index);
+                    select(ref, b[index]);
                   },
-                  child: ProviderScope(
-                      child: Text(g.buttonsElement[index].char)))),
+                  style:
+                      ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                  child: Text(
+                    b[index].char,
+                  ))),
         ),
         ElevatedButton(
             onPressed: () {
-              ref.watch(gameManager.notifier).gameStart();
+              ref.read(gameManager.notifier).gameStart();
+              ref
+                  .read(buttonsManager.notifier)
+                  .makeRandom(Element(g.selectedFamily, g.selectedMember + 1));
               print(g.selectedMember);
             },
             child: Text("start"))
