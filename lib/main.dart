@@ -16,6 +16,8 @@ final familyElements = [
 
 final r = Random();
 
+final stackTextManager = StateProvider((ref) => "Press-Start ");
+
 List<Element> randomElements(int amount) {
   List<Element> outs = [];
 
@@ -153,12 +155,16 @@ class MainPage extends ConsumerWidget {
             .selectMem(ref.read(gameManager).selectedMember + 1);
       } else {
         print("hello");
+        ref.read(stackTextManager.notifier).state +=
+            familyElements[g.selectedFamily][g.selectedMember + 1] + " l ";
         ref.read(gameManager.notifier).selectFM(g.selectedFamily + 1, 0);
         ref.read(gameManager.notifier).isR(true);
         ref
             .read(buttonsManager.notifier)
             .makeRandom(Element(g.selectedFamily, 1));
       }
+      ref.read(stackTextManager.notifier).state +=
+          familyElements[g.selectedFamily][g.selectedMember];
     } else {
       ref.read(gameManager.notifier).isR(false);
     }
@@ -168,10 +174,22 @@ class MainPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final g = ref.watch(gameManager);
     final b = ref.watch(buttonsManager);
+    final stackText = ref.watch(stackTextManager);
 
     return Scaffold(
       body: Column(children: [
-        Text(familyElements[g.selectedFamily][g.selectedMember]),
+        GestureDetector(
+            child: Text(stackText),
+            onTap: () {
+              ref.read(stackTextManager.notifier).state = "";
+              ref.read(gameManager.notifier).gameStart();
+              ref.read(stackTextManager.notifier).state +=
+                  familyElements[g.selectedFamily][g.selectedMember];
+              ref
+                  .read(buttonsManager.notifier)
+                  .makeRandom(Element(g.selectedFamily, g.selectedMember + 1));
+              print(g.selectedMember);
+            }),
         Row(
           children: List.generate(
               5,
@@ -185,15 +203,6 @@ class MainPage extends ConsumerWidget {
                     b[index].char,
                   ))),
         ),
-        ElevatedButton(
-            onPressed: () {
-              ref.read(gameManager.notifier).gameStart();
-              ref
-                  .read(buttonsManager.notifier)
-                  .makeRandom(Element(g.selectedFamily, g.selectedMember + 1));
-              print(g.selectedMember);
-            },
-            child: Text("start"))
       ]),
     );
   }
